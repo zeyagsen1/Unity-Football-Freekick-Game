@@ -5050,6 +5050,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0dcda7e3572f4ff41a90477a9e2fa8ac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  goalkeeperAnimator: {fileID: 944497385700611430}
   ball: {fileID: 8581116622006556911}
   shootAudioSource: {fileID: 1882280546}
   shootAudioClip: {fileID: 8300000, guid: cdeda96bb3e36784abf2cf8c49476353, type: 3}
@@ -14047,7 +14048,7 @@ Transform:
   m_GameObject: {fileID: 5814282522648237478}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.99999994, z: -0, w: -0.00045066985}
-  m_LocalPosition: {x: -0.1005387, y: 0.100000024, z: 5.5111623}
+  m_LocalPosition: {x: 0, y: 0.27, z: 5.5111623}
   m_LocalScale: {x: 15, y: 15, z: 15}
   m_ConstrainProportionsScale: 0
   m_Children:

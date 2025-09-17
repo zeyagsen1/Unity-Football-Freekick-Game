@@ -5,6 +5,16 @@ using UnityEngine.UI;
 
 public class FreekickCore : MonoBehaviour
 {
+
+    // Add these variables at the top of your FreekickCore class
+[Header("Goalkeeper Reaction Settings")]
+public float goalkeeperReactionSpeed = 1.0f; // Base reaction speed
+public float maxReactionDelay = 2.0f; // Maximum delay in seconds
+public float minReactionDelay = 0.1f; // Minimum delay in secon
+
+    [Header("Goalkeeper")]
+public Animator goalkeeperAnimator;
+
     [Header("Ball and Football Arena")]
     public Rigidbody ball;
     public AudioSource shootAudioSource;
@@ -144,6 +154,7 @@ public class FreekickCore : MonoBehaviour
         var ballTransform = ball.transform;
         ballTransform.localPosition = Vector3.zero;
         ballTransform.localEulerAngles = Vector3.zero;
+        ResetGoalkeeperAnimation();
     }
 
     private void SetNewFreekickUI()
@@ -238,10 +249,141 @@ public class FreekickCore : MonoBehaviour
         yield return null;
     }
 
-    private void ShootToFarTarget()
+private void ShootToFarTarget()
+{
+    // Adding force if ball arrives the near target.
+    var shoot = (farTarget.position - ball.position).normalized;
+    ball.AddForce((shoot + new Vector3(0f, _power / 105f, 0f)) * _power / 2.4f, ForceMode.Impulse);
+    
+    // Calculate reaction delay based on power and distance
+    float reactionDelay = CalculateGoalkeeperReactionDelay();
+    
+    // Trigger goalkeeper animation with delay
+    StartCoroutine(DelayedGoalkeeperReaction(reactionDelay));
+}
+
+
+private float CalculateGoalkeeperReactionDelay()
+{
+    // Calculate distance between ball and goalkeeper
+    float distanceToGoal = Vector3.Distance(ball.position, goalkeeperAnimator.transform.position);
+    
+    // Normalize power (0-1 range, where 1 is max power)
+    float normalizedPower = _power / 30f;
+    
+    // Calculate base reaction time
+    // Higher power = faster ball = less time to react = shorter delay
+    // Greater distance = more time to see ball coming = longer delay possible
+    float powerFactor = 1f - normalizedPower; // Inverted: high power = low factor
+    float distanceFactor = Mathf.Clamp01(distanceToGoal / 50f); // Normalize distance
+    
+    // Combine factors to get reaction delay
+    // Close + Fast ball = very quick reaction needed
+    // Far + Slow ball = more time to react
+    float reactionDelay = minReactionDelay + (maxReactionDelay * powerFactor * distanceFactor);
+    
+    // Add some randomness for realism (±20%)
+    float randomFactor = UnityEngine.Random.Range(0.8f, 1.2f);
+    reactionDelay *= randomFactor;
+    
+    Debug.Log($"Ball Power: {_power}, Distance: {distanceToGoal:F1}m, Reaction Delay: {reactionDelay:F2}s");
+    
+    return Mathf.Clamp(reactionDelay, minReactionDelay, maxReactionDelay);
+}
+
+private IEnumerator DelayedGoalkeeperReaction(float delay)
+{
+    yield return new WaitForSeconds(delay);
+    
+    // Check if ball is still coming towards goal (not already scored/missed)
+    if (_isBallHit && ball.linearVelocity.magnitude > 1f)
     {
-        // Adding force if ball arrives the near target.
-        var shoot = (farTarget.position - ball.position).normalized;
-        ball.AddForce((shoot + new Vector3(0f, _power / 105f, 0f)) * _power / 2.4f, ForceMode.Impulse);
+        TriggerGoalkeeperAnimation();
     }
+}
+
+// Enhanced goalkeeper animation trigger with success rate
+private void TriggerGoalkeeperAnimation()
+{
+    if (goalkeeperAnimator == null) return;
+    
+    // Calculate if goalkeeper can successfully block based on reaction time
+    bool canBlock = CalculateBlockingChance();
+    
+    // Calculate the direction from ball to far target (where ball is heading)
+    Vector3 ballDirection = (farTarget.position - ball.position).normalized;
+    float horizontalDirection = ballDirection.x;
+    
+    if (horizontalDirection > 0.1f) // Ball going to goalkeeper's right
+    {
+        if (canBlock)
+        {
+            goalkeeperAnimator.SetTrigger("right");
+            Debug.Log("Goalkeeper diving RIGHT - Good reaction!");
+        }
+        else
+        {
+            // Delayed or weak reaction
+            goalkeeperAnimator.SetTrigger("right");
+            Debug.Log("Goalkeeper diving RIGHT - Too slow!");
+        }
+    }
+    else if (horizontalDirection < -0.1f) // Ball going to goalkeeper's left  
+    {
+        if (canBlock)
+        {
+            goalkeeperAnimator.SetTrigger("left");
+            Debug.Log("Goalkeeper diving LEFT - Good reaction!");
+        }
+        else
+        {
+            goalkeeperAnimator.SetTrigger("left");
+            Debug.Log("Goalkeeper diving LEFT - Too slow!");
+        }
+    }
+}
+
+
+
+private bool CalculateBlockingChance()
+{
+    float distanceToGoal = Vector3.Distance(ball.position, goalkeeperAnimator.transform.position);
+    float normalizedPower = _power / 30f;
+    
+    // Calculate success chance based on various factors
+    float distanceBonus = Mathf.Clamp01(distanceToGoal / 30f); // More distance = better chance
+    float powerPenalty = normalizedPower; // More power = harder to block
+    float reactionSpeedBonus = goalkeeperReactionSpeed / 2f; // Goalkeeper skill
+    
+    float blockingChance = (distanceBonus + reactionSpeedBonus - powerPenalty) * 0.5f;
+    blockingChance = Mathf.Clamp01(blockingChance);
+    
+    // Add some randomness
+    float randomResult = UnityEngine.Random.Range(0f, 1f);
+    
+    Debug.Log($"Blocking chance: {blockingChance:F2}, Random: {randomResult:F2}");
+    
+    return randomResult < blockingChance;
+}
+
+private void SetGoalkeeperAnimationSpeed(float urgency)
+{
+    if (goalkeeperAnimator == null) return;
+    
+    // urgency: 0 = relaxed, 1 = very urgent
+    float animationSpeed = Mathf.Lerp(0.8f, 1.5f, urgency);
+    goalkeeperAnimator.speed = animationSpeed;
+    
+    Debug.Log($"Goalkeeper animation speed: {animationSpeed:F2}");
+}
+private void ResetGoalkeeperAnimation()
+{
+    if (goalkeeperAnimator == null) return;
+    
+    // Reset the goalkeeper back to idle state
+    goalkeeperAnimator.SetTrigger("reset");
+    goalkeeperAnimator.transform.position = new Vector3(0, 0.27f, 5.55f);
+    goalkeeperAnimator.transform.eulerAngles = new Vector3(0, 180f, 0);
+    Debug.Log("Goalkeeper reset to idle");
+}
 }
