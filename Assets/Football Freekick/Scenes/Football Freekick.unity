@@ -5050,6 +5050,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0dcda7e3572f4ff41a90477a9e2fa8ac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  goalkeeperReactionSpeed: 1
+  maxReactionDelay: 2
+  minReactionDelay: 0.1
   goalkeeperAnimator: {fileID: 944497385700611430}
   ball: {fileID: 8581116622006556911}
   shootAudioSource: {fileID: 1882280546}
